@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SWAcademy – Communauté SolidWorks</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<!-- ═══════════ FIREBASE SDK ═══════════ -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+<style>
+:root {
+  --bg: #0e0f11;
+  --bg2: #161820;
+  --bg3: #1e2028;
+  --bg4: #252730;
+  --border: #2a2d38;
+  --orange: #ff5c1a;
+  --orange2: #ff7a3d;
+  --orange-glow: rgba(255,92,26,0.15);
+  --text: #e8e9ef;
+  --text2: #9a9caa;
+  --text3: #5c5f6e;
+  --green: #22c55e;
+  --red: #ef4444;
+  --blue: #3b82f6;
+  --yellow: #eab308;
+  --radius: 10px;
+  --radius-lg: 16px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar{width:6px;}
+::-webkit-scrollbar-track{background:var(--bg2);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:var(--orange);}
+
+/* ─── LOADING OVERLAY ─── */
+#loadingOverlay{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+.loading-logo{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:36px;}
+.loading-logo span{color:var(--orange);}
+.loading-spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-text{font-size:13px;color:var(--text3);}
+
+/* ─── AUTH SCREENS ─── */
+#authScreen{display:none;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);position:relative;}
+#authScreen::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(255,92,26,0.08) 0%,transparent 70%);}
+.auth-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:40px 36px;width:100%;max-width:480px;position:relative;z-index:1;box-shadow:0 32px 64px rgba(0,0,0,0.5);}
+.auth-logo{text-align:center;margin-bottom:28px;}
+.auth-logo span.sw{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:30px;color:#fff;letter-spacing:-1px;}
+.auth-logo span.ac{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:30px;color:var(--orange);}
+.auth-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:32px;margin-bottom:4px;color:#fff;}
+.auth-sub{color:var(--text2);font-size:14px;margin-bottom:28px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-group{margin-bottom:16px;}
+.form-group label{display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:6px;}
+.form-group input,.form-group select,.form-group textarea{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:11px 14px;color:var(--text);font-size:14px;font-family:'Barlow',sans-serif;outline:none;transition:border-color .2s,box-shadow .2s;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--orange);box-shadow:0 0 0 3px var(--orange-glow);}
+.form-group textarea{resize:vertical;min-height:80px;}
+.form-group select{appearance:none;cursor:pointer;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border-radius:var(--radius);font-family:'Barlow',sans-serif;font-weight:600;font-size:14px;cursor:pointer;border:none;transition:all .2s;text-decoration:none;}
+.btn-orange{background:var(--orange);color:#fff;width:100%;margin-top:4px;}
+.btn-orange:hover{background:var(--orange2);transform:translateY(-1px);box-shadow:0 8px 24px rgba(255,92,26,0.3);}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border);}
+.btn-ghost:hover{border-color:var(--orange);color:var(--orange);}
+.btn-blue{background:var(--blue);color:#fff;}
+.btn-blue:hover{background:#2563eb;}
+.btn-red{background:var(--red);color:#fff;}
+.btn-red:hover{background:#dc2626;}
+.btn-sm{padding:7px 14px;font-size:13px;}
+.auth-footer{text-align:center;margin-top:20px;font-size:13px;color:var(--text2);}
+.auth-footer a{color:var(--orange);cursor:pointer;text-decoration:none;}
+.auth-footer a:hover{text-decoration:underline;}
+.msg-error{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:16px;display:none;}
+.msg-success{background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#86efac;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:16px;display:none;}
+
+/* ─── MAIN APP ─── */
+#app{display:none;min-height:100vh;}
+
+/* ─── NAVBAR ─── */
+.navbar{position:fixed;top:0;left:0;right:0;height:60px;background:rgba(14,15,17,0.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;z-index:100;gap:0;}
+.nav-logo{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:22px;color:#fff;margin-right:40px;letter-spacing:-0.5px;cursor:pointer;}
+.nav-logo span{color:var(--orange);}
+.nav-links{display:flex;gap:4px;flex:1;}
+.nav-links a{color:var(--text2);font-size:14px;font-weight:500;padding:6px 14px;border-radius:7px;cursor:pointer;transition:all .2s;text-decoration:none;}
+.nav-links a:hover,.nav-links a.active{color:#fff;background:var(--bg3);}
+.nav-right{display:flex;align-items:center;gap:10px;}
+.nav-user{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);}
+.nav-avatar{width:30px;height:30px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;}
+.badge-admin{background:var(--orange-glow);color:var(--orange);border:1px solid rgba(255,92,26,0.3);font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;}
+.btn-nav{background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:13px;padding:6px 14px;border-radius:8px;cursor:pointer;font-family:'Barlow',sans-serif;font-weight:500;transition:all .2s;}
+.btn-nav:hover{border-color:var(--orange);color:var(--orange);}
+
+/* ─── SIDEBAR ─── */
+.layout{display:flex;padding-top:60px;min-height:100vh;}
+.sidebar{width:200px;background:var(--bg2);border-right:1px solid var(--border);padding:20px 12px;position:fixed;top:60px;bottom:0;overflow-y:auto;left:-200px;transition:left .3s;}
+.sidebar.open{left:0;}
+@media(min-width:900px){.sidebar{left:0;}.main-content{margin-left:200px;}}
+.sidebar-section{margin-bottom:24px;}
+.sidebar-label{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;padding:0 8px;margin-bottom:8px;}
+.sidebar-link{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;}
+.sidebar-link:hover{background:var(--bg3);color:var(--text);}
+.sidebar-link.active{background:var(--orange-glow);color:var(--orange);}
+.sidebar-link .icon{font-size:16px;}
+
+/* ─── MAIN CONTENT ─── */
+.main-content{flex:1;padding:32px 28px;min-height:calc(100vh - 60px);}
+.page{display:none;}
+.page.active{display:block;animation:fadeIn .3s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* ─── HERO ─── */
+.hero{background:linear-gradient(135deg,var(--bg2) 0%,var(--bg3) 100%);border:1px solid var(--border);border-radius:var(--radius-lg);padding:48px 40px;margin-bottom:28px;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;right:-80px;top:-80px;width:300px;height:300px;background:radial-gradient(circle,rgba(255,92,26,0.12) 0%,transparent 70%);border-radius:50%;}
+.hero-tag{display:inline-flex;align-items:center;gap:6px;background:var(--orange-glow);border:1px solid rgba(255,92,26,0.3);color:var(--orange);font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px;letter-spacing:0.5px;}
+.hero h1{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:42px;line-height:1.1;color:#fff;margin-bottom:12px;}
+.hero h1 span{color:var(--orange);}
+.hero p{color:var(--text2);font-size:15px;max-width:500px;line-height:1.6;}
+.hero-stats{display:flex;gap:32px;margin-top:28px;}
+.stat{text-align:left;}
+.stat-num{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:28px;color:#fff;}
+.stat-lbl{font-size:12px;color:var(--text3);margin-top:2px;}
+
+/* ─── CARDS GRID ─── */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;transition:all .2s;position:relative;}
+.card:hover{border-color:var(--orange);box-shadow:0 8px 32px rgba(255,92,26,0.08);transform:translateY(-2px);}
+.card-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:14px;}
+.card-icon.orange{background:var(--orange-glow);}
+.card-icon.blue{background:rgba(59,130,246,0.15);}
+.card-icon.green{background:rgba(34,197,94,0.15);}
+.card-icon.yellow{background:rgba(234,179,8,0.15);}
+.card h3{font-size:15px;font-weight:600;color:#fff;margin-bottom:6px;}
+.card p{font-size:13px;color:var(--text2);line-height:1.5;}
+.card-meta{display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+.tag{display:inline-flex;align-items:font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;}
+.tag{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;}
+.tag-orange{background:var(--orange-glow);color:var(--orange);}
+.tag-blue{background:rgba(59,130,246,0.15);color:var(--blue);}
+.tag-green{background:rgba(34,197,94,0.15);color:var(--green);}
+.tag-red{background:rgba(239,68,68,0.15);color:var(--red);}
+.tag-yellow{background:rgba(234,179,8,0.15);color:var(--yellow);}
+.tag-gray{background:var(--bg4);color:var(--text2);}
+
+/* ─── PAGE HEADER ─── */
+.page-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:24px;gap:16px;flex-wrap:wrap;}
+.page-header-left h2{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:28px;color:#fff;}
+.page-header-left p{font-size:13px;color:var(--text2);margin-top:2px;}
+
+/* ─── TABLE ─── */
+.table-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;}
+.table-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.table-header h3{font-size:14px;font-weight:600;color:#fff;}
+table{width:100%;border-collapse:collapse;}
+th{padding:11px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:1px;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border);}
+td{padding:13px 16px;font-size:13px;color:var(--text);border-bottom:1px solid var(--border);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--bg3);}
+.actions-cell{display:flex;gap:8px;align-items:center;}
+
+/* ─── MODAL ─── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;width:100%;max-width:520px;position:relative;max-height:90vh;overflow-y:auto;animation:modalIn .2s ease;}
+@keyframes modalIn{from{transform:scale(0.95);opacity:0;}to{transform:scale(1);opacity:1;}}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;}
+.modal-header h3{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:22px;color:#fff;}
+.modal-close{background:var(--bg3);border:1px solid var(--border);color:var(--text2);width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;transition:all .2s;}
+.modal-close:hover{border-color:var(--red);color:var(--red);}
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;padding-top:20px;border-top:1px solid var(--border);}
+
+/* ─── FILE UPLOAD ─── */
+.file-drop{border:2px dashed var(--border);border-radius:var(--radius);padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+.file-drop:hover,.file-drop.drag{border-color:var(--orange);background:var(--orange-glow);}
+.file-drop input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.file-drop .drop-icon{font-size:32px;margin-bottom:8px;}
+.file-drop p{font-size:13px;color:var(--text2);}
+.file-drop strong{color:var(--orange);}
+.file-preview{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-top:10px;}
+.file-preview .file-name{font-size:13px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.file-preview .file-size{font-size:11px;color:var(--text3);}
+
+/* ─── ADMIN DASHBOARD ─── */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:24px;}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;text-align:center;}
+.stat-card .num{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:36px;color:#fff;margin-bottom:4px;}
+.stat-card .lbl{font-size:12px;color:var(--text3);}
+.stat-card .icon{font-size:24px;margin-bottom:8px;}
+
+/* ─── SEARCH ─── */
+.search-bar{position:relative;flex:1;max-width:300px;}
+.search-bar input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 14px 9px 36px;color:var(--text);font-size:13px;font-family:'Barlow',sans-serif;outline:none;transition:border-color .2s;}
+.search-bar input:focus{border-color:var(--orange);}
+.search-bar::before{content:'🔍';position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:12px;}
+
+/* ─── EMPTY STATE ─── */
+.empty{text-align:center;padding:60px 20px;color:var(--text3);}
+.empty .empty-icon{font-size:48px;margin-bottom:12px;}
+.empty p{font-size:14px;}
+
+/* ─── TOAST ─── */
+#toast{position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:8px;}
+.toast-item{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:13px;display:flex;align-items:center;gap:10px;animation:toastIn .3s ease;box-shadow:0 8px 24px rgba(0,0,0,0.4);min-width:260px;}
+.toast-item.success{border-color:rgba(34,197,94,0.3);color:#86efac;}
+.toast-item.error{border-color:rgba(239,68,68,0.3);color:#fca5a5;}
+.toast-item.info{border-color:rgba(59,130,246,0.3);color:#93c5fd;}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
+
+/* ─── LINKS PAGE ─── */
+.link-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px;display:flex;align-items:center;gap:14px;transition:all .2s;text-decoration:none;}
+.link-card:hover{border-color:var(--orange);transform:translateX(4px);}
+.link-icon{width:40px;height:40px;border-radius:10px;background:var(--orange-glow);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.link-info{flex:1;min-width:0;}
+.link-title{font-size:14px;font-weight:600;color:#fff;margin-bottom:3px;}
+.link-url{font-size:12px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.link-desc{font-size:13px;color:var(--text2);margin-top:4px;}
+
+/* ─── FILES PAGE ─── */
+.files-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+.file-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;transition:all .2s;position:relative;}
+.file-card:hover{border-color:var(--orange);box-shadow:0 8px 24px rgba(255,92,26,0.07);}
+.file-type-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px;}
+.file-card h4{font-size:14px;font-weight:600;color:#fff;margin-bottom:4px;word-break:break-word;}
+.file-card .desc{font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.4;}
+.file-card .meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+.file-card .download-btn{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:13px;padding:9px;border-radius:8px;cursor:pointer;font-family:'Barlow',sans-serif;font-weight:500;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.file-card .download-btn:hover{background:var(--orange);border-color:var(--orange);color:#fff;}
+.file-card .admin-actions{position:absolute;top:12px;right:12px;display:flex;gap:6px;}
+.icon-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .2s;}
+.icon-btn:hover{border-color:var(--red);color:var(--red);}
+
+/* ─── FILTER ROW ─── */
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
+.filter-btn{background:var(--bg2);border:1px solid var(--border);color:var(--text2);font-size:12px;font-weight:600;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:'Barlow',sans-serif;transition:all .2s;}
+.filter-btn:hover{border-color:var(--orange);color:var(--orange);}
+.filter-btn.active{background:var(--orange-glow);border-color:var(--orange);color:var(--orange);}
+
+/* ─── PROGRESS BAR ─── */
+.progress-bar{width:100%;height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:8px;}
+.progress-fill{height:100%;background:var(--orange);border-radius:2px;transition:width .3s;}
+
+/* ─── UPLOAD PROGRESS ─── */
+.upload-status{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-top:10px;font-size:13px;color:var(--text2);}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:600px){
+  .main-content{padding:20px 16px;}
+  .hero{padding:28px 20px;}
+  .hero h1{font-size:30px;}
+  .form-row{grid-template-columns:1fr;}
+  .hero-stats{gap:20px;}
+}
+.divider{height:1px;background:var(--border);margin:8px 0;}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ LOADING OVERLAY ═══════════════ -->
+<div id="loadingOverlay">
+  <div class="loading-logo"><span style="color:#fff">SW</span><span>Academy</span></div>
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Connexion à la base de données...</div>
+</div>
+
+<!-- ═══════════════ AUTH SCREEN ═══════════════ -->
+<div id="authScreen">
+  <div class="auth-card" id="loginCard">
+    <div class="auth-logo"><span class="sw">SW</span><span class="ac">Academy</span></div>
+    <h2 class="auth-title">Connexion</h2>
+    <p class="auth-sub">Accédez à votre espace SolidWorks</p>
+    <div class="msg-error" id="loginError"></div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="votre@email.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>Mot de passe</label>
+      <input type="password" id="loginPwd" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn btn-orange" onclick="doLogin()">Se connecter</button>
+    <div class="auth-footer">Pas encore de compte ? <a onclick="showRegister()">Créer un compte</a></div>
+  </div>
+
+  <div class="auth-card" id="registerCard" style="display:none;">
+    <div class="auth-logo"><span class="sw">SW</span><span class="ac">Academy</span></div>
+    <h2 class="auth-title">Créer un compte</h2>
+    <p class="auth-sub">Rejoignez la communauté SolidWorks</p>
+    <div class="msg-error" id="regError"></div>
+    <div class="msg-success" id="regSuccess"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Prénom</label><input type="text" id="regFirst" placeholder="Jean"></div>
+      <div class="form-group"><label>Nom</label><input type="text" id="regLast" placeholder="Dupont"></div>
+    </div>
+    <div class="form-group"><label>Email</label><input type="email" id="regEmail" placeholder="votre@email.com"></div>
+    <div class="form-group">
+      <label>Mot de passe</label>
+      <input type="password" id="regPwd" placeholder="Min. 6 caractères">
+    </div>
+    <div class="form-group">
+      <label>Confirmer le mot de passe</label>
+      <input type="password" id="regPwd2" placeholder="••••••••">
+    </div>
+    <button class="btn btn-orange" onclick="doRegister()">Créer mon compte</button>
+    <div class="auth-footer">Déjà un compte ? <a onclick="showLogin()">Se connecter</a></div>
+  </div>
+</div>
+
+<!-- ═══════════════ MAIN APP ═══════════════ -->
+<div id="app">
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="nav-logo" onclick="showPage('accueil')"><span style="color:#fff">SW</span><span>Academy</span></div>
+    <div class="nav-links">
+      <a onclick="showPage('accueil')" id="nav-accueil" class="active">Accueil</a>
+      <a onclick="showPage('tutoriels')" id="nav-tutoriels">Tutoriels</a>
+      <a onclick="showPage('fichiers')" id="nav-fichiers">Fichiers</a>
+      <a onclick="showPage('liens')" id="nav-liens">Liens</a>
+    </div>
+    <div class="nav-right">
+      <div class="nav-user">
+        <div class="nav-avatar" id="navAvatar">U</div>
+        <span id="navName">Utilisateur</span>
+        <span class="badge-admin" id="navAdminBadge" style="display:none;">⚙ Admin</span>
+      </div>
+      <button class="btn-nav" onclick="showPage('moncompte')">Mon compte</button>
+      <button class="btn-nav" onclick="doLogout()">Déconnexion</button>
+    </div>
+  </nav>
+
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-section" id="adminSideSection" style="display:none;">
+        <div class="sidebar-label">Administration</div>
+        <div class="sidebar-link active" onclick="showPage('dashboard')" id="sl-dashboard"><span class="icon">📊</span>Dashboard</div>
+        <div class="sidebar-link" onclick="showPage('users')" id="sl-users"><span class="icon">👥</span>Utilisateurs</div>
+        <div class="sidebar-link" onclick="showPage('contenu')" id="sl-contenu"><span class="icon">📋</span>Contenu</div>
+        <div class="sidebar-link" onclick="showPage('gfichiers')" id="sl-gfichiers"><span class="icon">📁</span>Fichiers</div>
+        <div class="sidebar-link" onclick="showPage('gliens')" id="sl-gliens"><span class="icon">🔗</span>Liens</div>
+      </div>
+      <div class="divider" id="adminDivider" style="display:none;"></div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Accès rapide</div>
+        <div class="sidebar-link" onclick="showPage('accueil')" id="sl-accueil"><span class="icon">🏠</span>Accueil</div>
+        <div class="sidebar-link" onclick="showPage('fichiers')" id="sl-fichiers"><span class="icon">📂</span>Fichiers</div>
+        <div class="sidebar-link" onclick="showPage('liens')" id="sl-liens"><span class="icon">🌐</span>Liens</div>
+        <div class="sidebar-link" onclick="showPage('tutoriels')" id="sl-tutos"><span class="icon">🎓</span>Tutoriels</div>
+        <div class="sidebar-link" onclick="doLogout()"><span class="icon">🚪</span>Déconnexion</div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+      <!-- ── PAGE ACCUEIL ── -->
+      <div class="page active" id="page-accueil">
+        <div class="hero">
+          <div class="hero-tag">🔧 Communauté SolidWorks</div>
+          <h1>La référence <span>SolidWorks</span><br>en français</h1>
+          <p>Accédez à des tutoriels, des pièces SolidWorks, des assemblages, et des ressources utiles pour progresser en conception mécanique.</p>
+          <div class="hero-stats">
+            <div class="stat"><div class="stat-num" id="statFiles">0</div><div class="stat-lbl">Fichiers</div></div>
+            <div class="stat"><div class="stat-num" id="statLinks">0</div><div class="stat-lbl">Liens</div></div>
+            <div class="stat"><div class="stat-num" id="statUsers">0</div><div class="stat-lbl">Membres</div></div>
+            <div class="stat"><div class="stat-num" id="statTutos">0</div><div class="stat-lbl">Tutoriels</div></div>
+          </div>
+        </div>
+        <div class="cards-grid" id="recentCards"></div>
+      </div>
+
+      <!-- ── PAGE FICHIERS ── -->
+      <div class="page" id="page-fichiers">
+        <div class="page-header">
+          <div class="page-header-left">
+            <h2>📂 Fichiers SolidWorks</h2>
+            <p>Téléchargez pièces, assemblages et documents PDF</p>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <div class="search-bar"><input type="text" placeholder="Rechercher..." oninput="filterFiles(this.value)"></div>
+          </div>
+        </div>
+        <div class="filter-row" id="fileFilters">
+          <button class="filter-btn active" onclick="setFileFilter('all',this)">Tous</button>
+          <button class="filter-btn" onclick="setFileFilter('SLDPRT',this)">SLDPRT</button>
+          <button class="filter-btn" onclick="setFileFilter('SLDASM',this)">SLDASM</button>
+          <button class="filter-btn" onclick="setFileFilter('SLDDRW',this)">SLDDRW</button>
+          <button class="filter-btn" onclick="setFileFilter('PDF',this)">PDF</button>
+          <button class="filter-btn" onclick="setFileFilter('OTHER',this)">Autres</button>
+        </div>
+        <div class="files-grid" id="filesGrid"></div>
+      </div>
+
+      <!-- ── PAGE LIENS ── -->
+      <div class="page" id="page-liens">
+        <div class="page-header">
+          <div class="page-header-left">
+            <h2>🌐 Liens utiles</h2>
+            <p>Ressources, documentation et outils SolidWorks</p>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;" id="linksList"></div>
+      </div>
+
+      <!-- ── PAGE TUTORIELS ── -->
+      <div class="page" id="page-tutoriels">
+        <div class="page-header">
+          <div class="page-header-left">
+            <h2>🎓 Tutoriels</h2>
+            <p>Guides et articles pour progresser avec SolidWorks</p>
+          </div>
+        </div>
+        <div class="cards-grid" id="tutosList"></div>
+      </div>
+
+      <!-- ── PAGE MON COMPTE ── -->
+      <div class="page" id="page-moncompte">
+        <div class="page-header"><div class="page-header-left"><h2>👤 Mon compte</h2><p>Gérez vos informations personnelles</p></div></div>
+        <div style="max-width:480px;">
+          <div class="table-wrap" style="padding:24px;">
+            <div class="msg-success" id="accountSuccess"></div>
+            <div class="form-group"><label>Prénom</label><input type="text" id="accFirst"></div>
+            <div class="form-group"><label>Nom</label><input type="text" id="accLast"></div>
+            <div class="form-group"><label>Email</label><input type="email" id="accEmail" disabled style="opacity:.5;"></div>
+            <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:8px;">
+              <h4 style="font-size:14px;margin-bottom:14px;color:var(--text2);">Changer le mot de passe</h4>
+              <div class="form-group"><label>Nouveau mot de passe</label><input type="password" id="accPwd" placeholder="Laisser vide pour ne pas changer"></div>
+              <div class="form-group"><label>Confirmer</label><input type="password" id="accPwd2" placeholder="••••••••"></div>
+            </div>
+            <button class="btn btn-orange" style="width:auto;padding:10px 24px;" onclick="saveAccount()">Enregistrer</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ADMIN: DASHBOARD ── -->
+      <div class="page" id="page-dashboard">
+        <div class="page-header"><div class="page-header-left"><h2>📊 Dashboard</h2><p>Vue d'ensemble de la plateforme</p></div></div>
+        <div class="stats-row" id="dashStats"></div>
+        <div class="cards-grid" id="dashRecent"></div>
+      </div>
+
+      <!-- ── ADMIN: USERS ── -->
+      <div class="page" id="page-users">
+        <div class="page-header">
+          <div class="page-header-left"><h2>👥 Gestion des utilisateurs</h2><p>Gérez les comptes et les permissions</p></div>
+          <button class="btn btn-orange btn-sm" onclick="openModal('modalAddUser')">+ Ajouter</button>
+        </div>
+        <div class="table-wrap">
+          <div class="table-header"><h3>Tous les utilisateurs</h3></div>
+          <table><thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Statut</th><th>Actions</th></tr></thead>
+          <tbody id="usersTable"></tbody></table>
+        </div>
+      </div>
+
+      <!-- ── ADMIN: CONTENU ── -->
+      <div class="page" id="page-contenu">
+        <div class="page-header">
+          <div class="page-header-left"><h2>📋 Gestion du contenu</h2><p>Tutoriels et articles</p></div>
+          <button class="btn btn-orange btn-sm" onclick="openModal('modalAddTuto')">+ Ajouter tutoriel</button>
+        </div>
+        <div class="table-wrap">
+          <div class="table-header"><h3>Tutoriels</h3></div>
+          <table><thead><tr><th>Titre</th><th>Niveau</th><th>Catégorie</th><th>Date</th><th>Actions</th></tr></thead>
+          <tbody id="tutosTable"></tbody></table>
+        </div>
+      </div>
+
+      <!-- ── ADMIN: GESTION FICHIERS ── -->
+      <div class="page" id="page-gfichiers">
+        <div class="page-header">
+          <div class="page-header-left"><h2>📁 Gestion des fichiers</h2><p>Ajoutez, modifiez et supprimez des fichiers</p></div>
+          <button class="btn btn-orange btn-sm" onclick="openModal('modalAddFile')">+ Ajouter fichier</button>
+        </div>
+        <div class="table-wrap">
+          <div class="table-header"><h3>Tous les fichiers</h3></div>
+          <table><thead><tr><th>Nom</th><th>Type</th><th>Niveau</th><th>Taille</th><th>Date</th><th>Actions</th></tr></thead>
+          <tbody id="filesTable"></tbody></table>
+        </div>
+      </div>
+
+      <!-- ── ADMIN: GESTION LIENS ── -->
+      <div class="page" id="page-gliens">
+        <div class="page-header">
+          <div class="page-header-left"><h2>🔗 Gestion des liens</h2><p>Ajoutez et gérez les liens utiles</p></div>
+          <button class="btn btn-orange btn-sm" onclick="openModal('modalAddLink')">+ Ajouter lien</button>
+        </div>
+        <div class="table-wrap">
+          <div class="table-header"><h3>Tous les liens</h3></div>
+          <table><thead><tr><th>Titre</th><th>URL</th><th>Catégorie</th><th>Actions</th></tr></thead>
+          <tbody id="linksTable"></tbody></table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ═══════════════ MODALS ═══════════════ -->
+
+<!-- Modal: Add User -->
+<div class="modal-overlay" id="modalAddUser">
+  <div class="modal">
+    <div class="modal-header"><h3>➕ Ajouter un utilisateur</h3><button class="modal-close" onclick="closeModal('modalAddUser')">✕</button></div>
+    <div class="msg-error" id="addUserError"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Prénom</label><input type="text" id="auFirst" placeholder="Jean"></div>
+      <div class="form-group"><label>Nom</label><input type="text" id="auLast" placeholder="Dupont"></div>
+    </div>
+    <div class="form-group"><label>Email</label><input type="email" id="auEmail" placeholder="jean@email.com"></div>
+    <div class="form-group"><label>Mot de passe</label><input type="password" id="auPwd" placeholder="Min. 6 caractères"></div>
+    <div class="form-group">
+      <label>Rôle</label>
+      <select id="auRole"><option value="user">Utilisateur</option><option value="admin">Administrateur</option></select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modalAddUser')">Annuler</button>
+      <button class="btn btn-orange btn-sm" onclick="addUser()">Créer l'utilisateur</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Edit User -->
+<div class="modal-overlay" id="modalEditUser">
+  <div class="modal">
+    <div class="modal-header"><h3>✏️ Modifier l'utilisateur</h3><button class="modal-close" onclick="closeModal('modalEditUser')">✕</button></div>
+    <input type="hidden" id="euId">
+    <div class="form-row">
+      <div class="form-group"><label>Prénom</label><input type="text" id="euFirst"></div>
+      <div class="form-group"><label>Nom</label><input type="text" id="euLast"></div>
+    </div>
+    <div class="form-group"><label>Email</label><input type="email" id="euEmail" disabled style="opacity:.5;"></div>
+    <div class="form-group">
+      <label>Rôle</label>
+      <select id="euRole"><option value="user">Utilisateur</option><option value="admin">Administrateur</option></select>
+    </div>
+    <div class="form-group">
+      <label>Statut</label>
+      <select id="euStatus"><option value="active">Actif</option><option value="inactive">Inactif</option></select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modalEditUser')">Annuler</button>
+      <button class="btn btn-orange btn-sm" onclick="saveEditUser()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add File -->
+<div class="modal-overlay" id="modalAddFile">
+  <div class="modal">
+    <div class="modal-header"><h3>📁 Ajouter un fichier</h3><button class="modal-close" onclick="closeModal('modalAddFile')">✕</button></div>
+    <div class="form-group"><label>Nom du fichier *</label><input type="text" id="afName" placeholder="Ex: Bride_assemblage_v2.SLDPRT"></div>
+    <div class="form-group"><label>Description</label><textarea id="afDesc" placeholder="Description du fichier..."></textarea></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Type</label>
+        <select id="afType">
+          <option>SLDPRT</option><option>SLDASM</option><option>SLDDRW</option><option>PDF</option><option>ZIP</option><option>OTHER</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Niveau requis</label>
+        <select id="afLevel">
+          <option>Tous niveaux</option><option>Débutant</option><option>Intermédiaire</option><option>Avancé</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Fichier (hébergé sur Firebase Storage)</label>
+      <div class="file-drop" id="afDrop" onclick="document.getElementById('afFileInput').click()">
+        <input type="file" id="afFileInput" style="display:none;" onchange="handleFileSelect(event,'af')">
+        <div class="drop-icon">📂</div>
+        <p><strong>Cliquez</strong> pour sélectionner le fichier</p>
+        <p style="font-size:11px;margin-top:4px;color:var(--text3);">Tous types de fichiers · Taille illimitée</p>
+      </div>
+      <div id="afFilePreview" style="display:none;"></div>
+      <div id="afProgress" style="display:none;">
+        <p style="font-size:12px;color:var(--text2);margin-top:8px;">Lecture du fichier...</p>
+        <div class="progress-bar"><div class="progress-fill" id="afProgressFill" style="width:0%"></div></div>
+      </div>
+      <div id="afUploadStatus" style="display:none;" class="upload-status">
+        ☁️ Upload vers Firebase Storage... <span id="afUploadPct">0%</span>
+        <div class="progress-bar" style="margin-top:8px;"><div class="progress-fill" id="afUploadFill" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>— ou — URL de téléchargement (si hébergé ailleurs)</label>
+      <input type="text" id="afUrl" placeholder="https://...">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modalAddFile')">Annuler</button>
+      <button class="btn btn-orange btn-sm" id="afSubmitBtn" onclick="addFile()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Link -->
+<div class="modal-overlay" id="modalAddLink">
+  <div class="modal">
+    <div class="modal-header"><h3>🔗 Ajouter un lien</h3><button class="modal-close" onclick="closeModal('modalAddLink')">✕</button></div>
+    <div class="form-group"><label>Titre *</label><input type="text" id="alTitle" placeholder="Documentation officielle SolidWorks"></div>
+    <div class="form-group"><label>URL *</label><input type="text" id="alUrl" placeholder="https://..."></div>
+    <div class="form-group"><label>Description</label><input type="text" id="alDesc" placeholder="Courte description du lien"></div>
+    <div class="form-group">
+      <label>Catégorie</label>
+      <select id="alCat">
+        <option>Documentation</option><option>Tutoriel vidéo</option><option>Outil</option><option>Forum</option><option>Téléchargement</option><option>Autre</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modalAddLink')">Annuler</button>
+      <button class="btn btn-orange btn-sm" onclick="addLink()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Tutorial -->
+<div class="modal-overlay" id="modalAddTuto">
+  <div class="modal">
+    <div class="modal-header"><h3>🎓 Ajouter un tutoriel</h3><button class="modal-close" onclick="closeModal('modalAddTuto')">✕</button></div>
+    <div class="form-group"><label>Titre *</label><input type="text" id="atTitle" placeholder="Introduction aux esquisses 3D"></div>
+    <div class="form-group"><label>Description</label><textarea id="atDesc" placeholder="Description du tutoriel..."></textarea></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Niveau</label>
+        <select id="atLevel"><option>Débutant</option><option>Intermédiaire</option><option>Avancé</option></select>
+      </div>
+      <div class="form-group">
+        <label>Catégorie</label>
+        <select id="atCat"><option>Esquisse</option><option>Pièces</option><option>Assemblage</option><option>Mise en plan</option><option>Simulation</option><option>Autre</option></select>
+      </div>
+    </div>
+    <div class="form-group"><label>URL (lien vers le tutoriel)</label><input type="text" id="atUrl" placeholder="https://..."></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modalAddTuto')">Annuler</button>
+      <button class="btn btn-orange btn-sm" onclick="addTuto()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Confirm Delete -->
+<div class="modal-overlay" id="modalConfirm">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header"><h3 id="confirmTitle">Confirmer la suppression</h3><button class="modal-close" onclick="closeModal('modalConfirm')">✕</button></div>
+    <p id="confirmMsg" style="font-size:14px;color:var(--text2);line-height:1.5;"></p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modalConfirm')">Annuler</button>
+      <button class="btn btn-red btn-sm" id="confirmBtn">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// ⚙️ FIREBASE CONFIGURATION
+// Remplacez ces valeurs par celles de votre projet Firebase
+// https://console.firebase.google.com/
+// ═══════════════════════════════════════════
+const firebaseConfig = {
+  apiKey:            "VOTRE_API_KEY",
+  authDomain:        "VOTRE_PROJECT_ID.firebaseapp.com",
+  projectId:         "VOTRE_PROJECT_ID",
+  storageBucket:     "VOTRE_PROJECT_ID.appspot.com",
+  messagingSenderId: "VOTRE_SENDER_ID",
+  appId:             "VOTRE_APP_ID"
+};
+
+firebase.initializeApp(firebaseConfig);
+const fsdb      = firebase.firestore();
+const fsstorage = firebase.storage();
+
+// ═══════════════════════════════════════════
+// STORAGE — Cache mémoire synchronisé avec Firestore
+// Toutes les données sont partagées entre tous les appareils
+// ═══════════════════════════════════════════
+const CACHE = {};
+
+const DB = {
+  get(k){
+    return (k in CACHE) ? CACHE[k] : null;
+  },
+  set(k, v){
+    CACHE[k] = v;
+    fsdb.collection('swa').doc(k)
+      .set({ value: JSON.stringify(v) })
+      .catch(e => console.error('Firestore write error:', e));
+  },
+  del(k){
+    delete CACHE[k];
+    fsdb.collection('swa').doc(k)
+      .delete()
+      .catch(e => console.error('Firestore delete error:', e));
+  }
+};
+
+// Charge toutes les données depuis Firestore au démarrage
+async function loadAllData(){
+  const keys = ['users','files','links','tutos'];
+  const snaps = await Promise.all(
+    keys.map(k => fsdb.collection('swa').doc(k).get())
+  );
+  snaps.forEach((snap, i) => {
+    if(snap.exists){
+      try { CACHE[keys[i]] = JSON.parse(snap.data().value); } catch(e){}
+    }
+  });
+}
+
+// Upload un fichier vers Firebase Storage et retourne son URL de téléchargement
+async function uploadFileToStorage(dataUrl, fileName){
+  const resp = await fetch(dataUrl);
+  const blob = await resp.blob();
+  const safeName = Date.now() + '_' + fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const ref = fsstorage.ref('files/' + safeName);
+  return new Promise((resolve, reject) => {
+    const task = ref.put(blob);
+    task.on('state_changed',
+      snap => {
+        const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+        const fill = document.getElementById('afUploadFill');
+        const label = document.getElementById('afUploadPct');
+        if(fill) fill.style.width = pct + '%';
+        if(label) label.textContent = pct + '%';
+      },
+      err => reject(err),
+      async () => {
+        const url = await task.snapshot.ref.getDownloadURL();
+        resolve(url);
+      }
+    );
+  });
+}
+
+// ─── INIT DEFAULT DATA ───
+function initData(){
+  if(!DB.get('users')){
+    DB.set('users',[{
+      id:'admin001', email:'admin@swacademy.fr', pwd:'admin123',
+      first:'Admin', last:'SW', role:'admin', status:'active',
+      created: new Date().toISOString()
+    }]);
+  }
+  if(!DB.get('files')) DB.set('files',[]);
+  if(!DB.get('links')) DB.set('links',[
+    {id:'l1',title:'MySolidWorks – Portail officiel',url:'https://my.solidworks.com',desc:'Accédez à vos licences et ressources SolidWorks',cat:'Documentation',icon:'🏢'},
+    {id:'l2',title:'Aide en ligne SolidWorks',url:'https://help.solidworks.com',desc:'Documentation complète et guides techniques',cat:'Documentation',icon:'📖'},
+    {id:'l3',title:'Forum SolidWorks',url:'https://forum.solidworks.com',desc:'Communauté internationale d\'utilisateurs SolidWorks',cat:'Forum',icon:'💬'},
+  ]);
+  if(!DB.get('tutos')) DB.set('tutos',[
+    {id:'t1',title:'Les bases de l\'esquisse 2D',desc:'Apprenez à créer et contraindre des esquisses en 2D.',level:'Débutant',cat:'Esquisse',url:'',created:new Date().toISOString()},
+    {id:'t2',title:'Créer une pièce simple',desc:'Guide complet pour votre première pièce SolidWorks.',level:'Débutant',cat:'Pièces',url:'',created:new Date().toISOString()},
+    {id:'t3',title:'Assemblage et contraintes',desc:'Assemblez plusieurs pièces et appliquez des contraintes.',level:'Intermédiaire',cat:'Assemblage',url:'',created:new Date().toISOString()},
+  ]);
+}
+
+// ═══════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════
+let currentUser = null;
+
+function showLogin(){ document.getElementById('loginCard').style.display=''; document.getElementById('registerCard').style.display='none'; }
+function showRegister(){ document.getElementById('loginCard').style.display='none'; document.getElementById('registerCard').style.display=''; }
+
+function doLogin(){
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const pwd   = document.getElementById('loginPwd').value;
+  const err   = document.getElementById('loginError');
+  err.style.display='none';
+  const users = DB.get('users')||[];
+  const u = users.find(x=>x.email.toLowerCase()===email && x.pwd===pwd);
+  if(!u){ err.textContent='Email ou mot de passe incorrect.'; err.style.display='block'; return; }
+  if(u.status==='inactive'){ err.textContent='Ce compte est désactivé.'; err.style.display='block'; return; }
+  currentUser = u;
+  // Session stockée dans localStorage (identifiant uniquement)
+  localStorage.setItem('swa_session', u.id);
+  startApp();
+}
+
+function doRegister(){
+  const first=document.getElementById('regFirst').value.trim();
+  const last =document.getElementById('regLast').value.trim();
+  const email=document.getElementById('regEmail').value.trim().toLowerCase();
+  const pwd  =document.getElementById('regPwd').value;
+  const pwd2 =document.getElementById('regPwd2').value;
+  const err  =document.getElementById('regError');
+  const ok   =document.getElementById('regSuccess');
+  err.style.display='none'; ok.style.display='none';
+  if(!first||!last||!email||!pwd){ err.textContent='Tous les champs sont requis.'; err.style.display='block'; return; }
+  if(pwd.length<6){ err.textContent='Le mot de passe doit faire au moins 6 caractères.'; err.style.display='block'; return; }
+  if(pwd!==pwd2){ err.textContent='Les mots de passe ne correspondent pas.'; err.style.display='block'; return; }
+  const users=DB.get('users')||[];
+  if(users.find(x=>x.email.toLowerCase()===email)){ err.textContent='Cet email est déjà utilisé.'; err.style.display='block'; return; }
+  const nu={id:'u'+Date.now(),email,pwd,first,last,role:'user',status:'active',created:new Date().toISOString()};
+  users.push(nu); DB.set('users',users);
+  ok.textContent='Compte créé ! Vous pouvez vous connecter.'; ok.style.display='block';
+  setTimeout(()=>{ showLogin(); document.getElementById('loginEmail').value=email; },1800);
+}
+
+function doLogout(){
+  currentUser=null;
+  localStorage.removeItem('swa_session');
+  document.getElementById('app').style.display='none';
+  document.getElementById('authScreen').style.display='flex';
+  document.getElementById('loginEmail').value='';
+  document.getElementById('loginPwd').value='';
+  document.getElementById('loginError').style.display='none';
+}
+
+function tryAutoLogin(){
+  const sid = localStorage.getItem('swa_session');
+  if(!sid) return false;
+  const users=DB.get('users')||[];
+  const u=users.find(x=>x.id===sid);
+  if(!u||u.status==='inactive') return false;
+  currentUser=u; startApp(); return true;
+}
+
+function startApp(){
+  document.getElementById('authScreen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('navName').textContent=currentUser.first+' '+currentUser.last;
+  document.getElementById('navAvatar').textContent=currentUser.first[0].toUpperCase();
+  document.getElementById('navAdminBadge').style.display=currentUser.role==='admin'?'':'none';
+  const show=currentUser.role==='admin';
+  document.getElementById('adminSideSection').style.display=show?'':'none';
+  document.getElementById('adminDivider').style.display=show?'':'none';
+  if(show) showPage('dashboard');
+  else showPage('accueil');
+  updateStats();
+  fillAccount();
+}
+
+// ═══════════════════════════════════════════
+// PAGE ROUTING
+// ═══════════════════════════════════════════
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-link').forEach(l=>l.classList.remove('active'));
+  document.querySelectorAll('.nav-links a').forEach(a=>a.classList.remove('active'));
+  const pg=document.getElementById('page-'+id);
+  if(pg) pg.classList.add('active');
+  const sl=document.getElementById('sl-'+id);
+  if(sl) sl.classList.add('active');
+  const nl=document.getElementById('nav-'+id);
+  if(nl) nl.classList.add('active');
+  if(id==='accueil') renderAccueil();
+  if(id==='fichiers') renderFiles();
+  if(id==='liens') renderLinks();
+  if(id==='tutoriels') renderTutos();
+  if(id==='dashboard') renderDashboard();
+  if(id==='users') renderUsersTable();
+  if(id==='gfichiers') renderFilesTable();
+  if(id==='gliens') renderLinksTable();
+  if(id==='contenu') renderTutosTable();
+}
+
+// ═══════════════════════════════════════════
+// STATS & ACCUEIL
+// ═══════════════════════════════════════════
+function updateStats(){
+  const files=DB.get('files')||[];
+  const links=DB.get('links')||[];
+  const users=DB.get('users')||[];
+  const tutos=DB.get('tutos')||[];
+  document.getElementById('statFiles').textContent=files.length;
+  document.getElementById('statLinks').textContent=links.length;
+  document.getElementById('statUsers').textContent=users.length;
+  document.getElementById('statTutos').textContent=tutos.length;
+}
+
+function renderAccueil(){
+  updateStats();
+  const files=DB.get('files')||[];
+  const tutos=DB.get('tutos')||[];
+  const container=document.getElementById('recentCards');
+  container.innerHTML='';
+  files.slice(-3).reverse().forEach(f=>{
+    container.innerHTML+=`<div class="card">
+      <div class="card-icon orange">${fileEmoji(f.type)}</div>
+      <h3>${esc(f.name)}</h3>
+      <p>${esc(f.desc||'Fichier SolidWorks')}</p>
+      <div class="card-meta">
+        <span class="tag tag-orange">${f.type}</span>
+        <span class="tag tag-gray">${f.level||'Tous niveaux'}</span>
+        <span style="flex:1"></span>
+        <button class="btn btn-ghost btn-sm" style="padding:5px 12px;" onclick="downloadFile('${f.id}')">⬇ Télécharger</button>
+      </div>
+    </div>`;
+  });
+  tutos.slice(-3).reverse().forEach(t=>{
+    container.innerHTML+=`<div class="card">
+      <div class="card-icon blue">🎓</div>
+      <h3>${esc(t.title)}</h3>
+      <p>${esc(t.desc)}</p>
+      <div class="card-meta">
+        <span class="tag ${levelTag(t.level)}">${t.level}</span>
+        <span class="tag tag-gray">${t.cat}</span>
+        ${t.url?`<span style="flex:1"></span><a href="${esc(t.url)}" target="_blank" class="btn btn-ghost btn-sm" style="padding:5px 12px;text-decoration:none;">→ Voir</a>`:''}
+      </div>
+    </div>`;
+  });
+  if(container.innerHTML==='') container.innerHTML='<div class="empty"><div class="empty-icon">📭</div><p>Aucun contenu pour le moment.<br>L\'administrateur ajoutera du contenu bientôt.</p></div>';
+}
+
+// ═══════════════════════════════════════════
+// FILES
+// ═══════════════════════════════════════════
+let fileFilter='all', fileSearch='';
+let pendingFileData=null, pendingFileName='', pendingFileSize=0;
+
+function setFileFilter(f, btn){
+  fileFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderFiles();
+}
+function filterFiles(q){ fileSearch=q.toLowerCase(); renderFiles(); }
+
+function renderFiles(){
+  const files=DB.get('files')||[];
+  const grid=document.getElementById('filesGrid');
+  let list=files.filter(f=>{
+    const matchFilter=fileFilter==='all'||f.type===fileFilter;
+    const matchSearch=!fileSearch||(f.name.toLowerCase().includes(fileSearch)||((f.desc||'').toLowerCase().includes(fileSearch)));
+    return matchFilter&&matchSearch;
+  });
+  if(list.length===0){ grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="empty-icon">📂</div><p>Aucun fichier disponible pour le moment.</p></div>'; return; }
+  grid.innerHTML=list.map(f=>`
+    <div class="file-card">
+      ${currentUser.role==='admin'?`<div class="admin-actions"><button class="icon-btn" title="Supprimer" onclick="confirmDelete('file','${f.id}','${esc(f.name)}')">🗑</button></div>`:''}
+      <div class="file-type-icon ${fileIconBg(f.type)}">${fileEmoji(f.type)}</div>
+      <h4>${esc(f.name)}</h4>
+      <p class="desc">${esc(f.desc||'')}</p>
+      <div class="meta">
+        <span class="tag tag-orange">${f.type}</span>
+        <span class="tag ${levelTag(f.level)}">${f.level||'Tous niveaux'}</span>
+        ${f.size?`<span class="tag tag-gray">${formatSize(f.size)}</span>`:''}
+      </div>
+      <button class="download-btn" onclick="downloadFile('${f.id}')">⬇ Télécharger</button>
+    </div>
+  `).join('');
+}
+
+function fileIconBg(t){ if(t==='PDF') return 'style="background:rgba(239,68,68,0.15)"'; if(t==='SLDPRT') return 'style="background:rgba(255,92,26,0.15)"'; if(t==='SLDASM') return 'style="background:rgba(59,130,246,0.15)"'; return 'style="background:rgba(234,179,8,0.15)"'; }
+function fileEmoji(t){ if(t==='PDF') return '📄'; if(t==='SLDPRT') return '⚙️'; if(t==='SLDASM') return '🔩'; if(t==='SLDDRW') return '📐'; if(t==='ZIP') return '🗜️'; return '📁'; }
+function levelTag(l){ if(l==='Débutant') return 'tag-green'; if(l==='Intermédiaire') return 'tag-yellow'; if(l==='Avancé') return 'tag-red'; return 'tag-gray'; }
+function formatSize(b){ if(b>1048576) return (b/1048576).toFixed(1)+' Mo'; if(b>1024) return (b/1024).toFixed(0)+' Ko'; return b+' o'; }
+
+function handleFileSelect(e, prefix){
+  const file=e.target.files[0];
+  if(!file) return;
+  const progDiv=document.getElementById(prefix+'Progress');
+  const prevDiv=document.getElementById(prefix+'FilePreview');
+  progDiv.style.display='block';
+  prevDiv.style.display='none';
+  document.getElementById(prefix+'UploadStatus').style.display='none';
+  const fill=document.getElementById(prefix+'ProgressFill');
+  let prog=0;
+  const iv=setInterval(()=>{ prog=Math.min(prog+10,90); fill.style.width=prog+'%'; },80);
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    clearInterval(iv); fill.style.width='100%';
+    setTimeout(()=>{
+      progDiv.style.display='none';
+      pendingFileData=ev.target.result;
+      pendingFileName=file.name;
+      pendingFileSize=file.size;
+      prevDiv.style.display='flex';
+      prevDiv.innerHTML=`<div class="file-preview"><span>📎</span><span class="file-name">${esc(file.name)}</span><span class="file-size">${formatSize(file.size)}</span></div>`;
+      const ni=document.getElementById(prefix+'Name');
+      if(ni&&!ni.value) ni.value=file.name;
+      const ext=file.name.split('.').pop().toUpperCase();
+      const ti=document.getElementById(prefix+'Type');
+      if(ti){ ['SLDPRT','SLDASM','SLDDRW','PDF','ZIP'].includes(ext)? ti.value=ext : ti.value='OTHER'; }
+    },200);
+  };
+  reader.readAsDataURL(file);
+}
+
+// addFile est async — upload vers Firebase Storage puis sauvegarde dans Firestore
+async function addFile(){
+  const name=document.getElementById('afName').value.trim();
+  const desc=document.getElementById('afDesc').value.trim();
+  const type=document.getElementById('afType').value;
+  const level=document.getElementById('afLevel').value;
+  const url=document.getElementById('afUrl').value.trim();
+  if(!name){ toast('Le nom du fichier est requis.','error'); return; }
+  if(!pendingFileData && !url){ toast('Sélectionnez un fichier ou entrez une URL.','error'); return; }
+
+  const btn = document.getElementById('afSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Traitement...';
+
+  let finalUrl = url;
+  if(pendingFileData){
+    const statusDiv = document.getElementById('afUploadStatus');
+    statusDiv.style.display = 'block';
+    document.getElementById('afFilePreview').style.display = 'none';
+    try {
+      finalUrl = await uploadFileToStorage(pendingFileData, pendingFileName);
+    } catch(e){
+      toast('Erreur upload : ' + (e.message||e), 'error');
+      btn.disabled=false; btn.textContent='Ajouter';
+      statusDiv.style.display='none';
+      return;
+    }
+    statusDiv.style.display='none';
+  }
+
+  const files=DB.get('files')||[];
+  const nf={
+    id:'f'+Date.now(), name, desc, type, level,
+    url: finalUrl,
+    size: pendingFileSize||0,
+    created: new Date().toISOString()
+  };
+  files.push(nf); DB.set('files',files);
+
+  // Reset form
+  pendingFileData=null; pendingFileName=''; pendingFileSize=0;
+  document.getElementById('afName').value='';
+  document.getElementById('afDesc').value='';
+  document.getElementById('afUrl').value='';
+  document.getElementById('afFilePreview').style.display='none';
+  document.getElementById('afFileInput').value='';
+  document.getElementById('afUploadFill').style.width='0%';
+  btn.disabled=false; btn.textContent='Ajouter';
+
+  closeModal('modalAddFile');
+  toast('Fichier ajouté avec succès !','success');
+  updateStats();
+  if(document.getElementById('page-gfichiers').classList.contains('active')) renderFilesTable();
+  if(document.getElementById('page-fichiers').classList.contains('active')) renderFiles();
+}
+
+function downloadFile(id){
+  const files=DB.get('files')||[];
+  const f=files.find(x=>x.id===id);
+  if(!f){ toast('Fichier introuvable.','error'); return; }
+  if(f.url){
+    const a=document.createElement('a');
+    a.href=f.url;
+    a.download=f.name;
+    a.target='_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } else {
+    toast('Aucun fichier disponible pour le téléchargement.','error');
+  }
+}
+
+function renderFilesTable(){
+  const files=DB.get('files')||[];
+  const tbody=document.getElementById('filesTable');
+  if(files.length===0){ tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:30px;">Aucun fichier</td></tr>`; return; }
+  tbody.innerHTML=files.map(f=>`<tr>
+    <td><span style="font-weight:500;">${esc(f.name)}</span></td>
+    <td><span class="tag tag-orange">${f.type}</span></td>
+    <td>${f.level||'Tous niveaux'}</td>
+    <td>${f.size?formatSize(f.size):f.url?'Lien externe':'–'}</td>
+    <td>${new Date(f.created).toLocaleDateString('fr-FR')}</td>
+    <td><div class="actions-cell">
+      <button class="btn btn-ghost btn-sm" onclick="downloadFile('${f.id}')">⬇</button>
+      <button class="btn btn-red btn-sm" onclick="confirmDelete('file','${f.id}','${esc(f.name)}')">🗑</button>
+    </div></td>
+  </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════
+// LINKS
+// ═══════════════════════════════════════════
+function renderLinks(){
+  const links=DB.get('links')||[];
+  const container=document.getElementById('linksList');
+  if(links.length===0){ container.innerHTML='<div class="empty"><div class="empty-icon">🔗</div><p>Aucun lien disponible.</p></div>'; return; }
+  const catIcons={'Documentation':'📖','Tutoriel vidéo':'🎬','Outil':'🔧','Forum':'💬','Téléchargement':'⬇️','Autre':'🌐'};
+  container.innerHTML=links.map(l=>`
+    <a class="link-card" href="${esc(l.url)}" target="_blank" rel="noopener">
+      <div class="link-icon">${l.icon||catIcons[l.cat]||'🌐'}</div>
+      <div class="link-info">
+        <div class="link-title">${esc(l.title)}</div>
+        <div class="link-url">${esc(l.url)}</div>
+        ${l.desc?`<div class="link-desc">${esc(l.desc)}</div>`:''}
+      </div>
+      <span class="tag tag-gray">${l.cat||'Autre'}</span>
+      ${currentUser.role==='admin'?`<button class="icon-btn" title="Supprimer" onclick="event.preventDefault();confirmDelete('link','${l.id}','${esc(l.title)}')" style="flex-shrink:0;">🗑</button>`:''}
+    </a>
+  `).join('');
+}
+
+function addLink(){
+  const title=document.getElementById('alTitle').value.trim();
+  const url=document.getElementById('alUrl').value.trim();
+  const desc=document.getElementById('alDesc').value.trim();
+  const cat=document.getElementById('alCat').value;
+  if(!title||!url){ toast('Titre et URL requis.','error'); return; }
+  const links=DB.get('links')||[];
+  links.push({id:'l'+Date.now(),title,url,desc,cat,created:new Date().toISOString()});
+  DB.set('links',links);
+  document.getElementById('alTitle').value='';
+  document.getElementById('alUrl').value='';
+  document.getElementById('alDesc').value='';
+  closeModal('modalAddLink');
+  toast('Lien ajouté !','success');
+  updateStats();
+  renderLinksTable();
+}
+
+function renderLinksTable(){
+  const links=DB.get('links')||[];
+  const tbody=document.getElementById('linksTable');
+  if(links.length===0){ tbody.innerHTML=`<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:30px;">Aucun lien</td></tr>`; return; }
+  tbody.innerHTML=links.map(l=>`<tr>
+    <td><span style="font-weight:500;">${esc(l.title)}</span></td>
+    <td><a href="${esc(l.url)}" target="_blank" style="color:var(--orange);font-size:12px;">${esc(l.url.substring(0,40))}${l.url.length>40?'...':''}</a></td>
+    <td><span class="tag tag-gray">${l.cat||'Autre'}</span></td>
+    <td><div class="actions-cell">
+      <a href="${esc(l.url)}" target="_blank" class="btn btn-ghost btn-sm">→ Ouvrir</a>
+      <button class="btn btn-red btn-sm" onclick="confirmDelete('link','${l.id}','${esc(l.title)}')">🗑</button>
+    </div></td>
+  </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════
+// TUTORIELS
+// ═══════════════════════════════════════════
+function renderTutos(){
+  const tutos=DB.get('tutos')||[];
+  const container=document.getElementById('tutosList');
+  if(tutos.length===0){ container.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🎓</div><p>Aucun tutoriel pour le moment.</p></div>'; return; }
+  container.innerHTML=tutos.map(t=>`<div class="card">
+    <div class="card-icon blue">🎓</div>
+    <h3>${esc(t.title)}</h3>
+    <p>${esc(t.desc)}</p>
+    <div class="card-meta">
+      <span class="tag ${levelTag(t.level)}">${t.level}</span>
+      <span class="tag tag-gray">${t.cat}</span>
+      ${t.url?`<span style="flex:1"></span><a href="${esc(t.url)}" target="_blank" class="btn btn-ghost btn-sm" style="padding:5px 12px;text-decoration:none;">→ Voir</a>`:''}
+      ${currentUser.role==='admin'?`<button class="icon-btn" onclick="confirmDelete('tuto','${t.id}','${esc(t.title)}')">🗑</button>`:''}
+    </div>
+  </div>`).join('');
+}
+
+function addTuto(){
+  const title=document.getElementById('atTitle').value.trim();
+  const desc=document.getElementById('atDesc').value.trim();
+  const level=document.getElementById('atLevel').value;
+  const cat=document.getElementById('atCat').value;
+  const url=document.getElementById('atUrl').value.trim();
+  if(!title){ toast('Le titre est requis.','error'); return; }
+  const tutos=DB.get('tutos')||[];
+  tutos.push({id:'t'+Date.now(),title,desc,level,cat,url,created:new Date().toISOString()});
+  DB.set('tutos',tutos);
+  document.getElementById('atTitle').value='';
+  document.getElementById('atDesc').value='';
+  document.getElementById('atUrl').value='';
+  closeModal('modalAddTuto');
+  toast('Tutoriel ajouté !','success');
+  updateStats();
+  renderTutosTable();
+}
+
+function renderTutosTable(){
+  const tutos=DB.get('tutos')||[];
+  const tbody=document.getElementById('tutosTable');
+  if(tutos.length===0){ tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:30px;">Aucun tutoriel</td></tr>`; return; }
+  tbody.innerHTML=tutos.map(t=>`<tr>
+    <td><span style="font-weight:500;">${esc(t.title)}</span></td>
+    <td><span class="tag ${levelTag(t.level)}">${t.level}</span></td>
+    <td><span class="tag tag-gray">${t.cat}</span></td>
+    <td>${new Date(t.created).toLocaleDateString('fr-FR')}</td>
+    <td><div class="actions-cell">
+      ${t.url?`<a href="${esc(t.url)}" target="_blank" class="btn btn-ghost btn-sm">→ Voir</a>`:''}
+      <button class="btn btn-red btn-sm" onclick="confirmDelete('tuto','${t.id}','${esc(t.title)}')">🗑</button>
+    </div></td>
+  </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════
+// USERS
+// ═══════════════════════════════════════════
+function renderUsersTable(){
+  const users=DB.get('users')||[];
+  const tbody=document.getElementById('usersTable');
+  tbody.innerHTML=users.map(u=>`<tr>
+    <td><div style="display:flex;align-items:center;gap:10px;">
+      <div class="nav-avatar" style="width:28px;height:28px;font-size:11px;">${u.first[0]}</div>
+      <span style="font-weight:500;">${esc(u.first)} ${esc(u.last)}</span>
+    </div></td>
+    <td style="color:var(--text2);">${esc(u.email)}</td>
+    <td>${u.role==='admin'?'<span class="tag tag-orange">⚙ Admin</span>':'<span class="tag tag-gray">Utilisateur</span>'}</td>
+    <td>${u.status==='active'?'<span class="tag tag-green">Actif</span>':'<span class="tag tag-red">Inactif</span>'}</td>
+    <td><div class="actions-cell">
+      ${u.id===currentUser.id?'<span style="font-size:12px;color:var(--text3);">🔒 Compte protégé</span>':
+      `<button class="btn btn-ghost btn-sm" onclick="openEditUser('${u.id}')">✏️ Modifier</button>
+       <button class="btn btn-red btn-sm" onclick="confirmDelete('user','${u.id}','${esc(u.first+' '+u.last)}')">🗑</button>`}
+    </div></td>
+  </tr>`).join('');
+}
+
+function addUser(){
+  const first=document.getElementById('auFirst').value.trim();
+  const last =document.getElementById('auLast').value.trim();
+  const email=document.getElementById('auEmail').value.trim().toLowerCase();
+  const pwd  =document.getElementById('auPwd').value;
+  const role =document.getElementById('auRole').value;
+  const err  =document.getElementById('addUserError');
+  err.style.display='none';
+  if(!first||!last||!email||!pwd){ err.textContent='Tous les champs sont requis.'; err.style.display='block'; return; }
+  if(pwd.length<6){ err.textContent='Mot de passe trop court.'; err.style.display='block'; return; }
+  const users=DB.get('users')||[];
+  if(users.find(x=>x.email===email)){ err.textContent='Email déjà utilisé.'; err.style.display='block'; return; }
+  users.push({id:'u'+Date.now(),email,pwd,first,last,role,status:'active',created:new Date().toISOString()});
+  DB.set('users',users);
+  closeModal('modalAddUser');
+  toast('Utilisateur créé !','success');
+  updateStats();
+  renderUsersTable();
+}
+
+function openEditUser(id){
+  const users=DB.get('users')||[];
+  const u=users.find(x=>x.id===id);
+  if(!u) return;
+  document.getElementById('euId').value=u.id;
+  document.getElementById('euFirst').value=u.first;
+  document.getElementById('euLast').value=u.last;
+  document.getElementById('euEmail').value=u.email;
+  document.getElementById('euRole').value=u.role;
+  document.getElementById('euStatus').value=u.status;
+  openModal('modalEditUser');
+}
+
+function saveEditUser(){
+  const id=document.getElementById('euId').value;
+  const first=document.getElementById('euFirst').value.trim();
+  const last =document.getElementById('euLast').value.trim();
+  const role =document.getElementById('euRole').value;
+  const status=document.getElementById('euStatus').value;
+  const users=DB.get('users')||[];
+  const i=users.findIndex(x=>x.id===id);
+  if(i<0) return;
+  users[i]={...users[i],first,last,role,status};
+  DB.set('users',users);
+  closeModal('modalEditUser');
+  toast('Utilisateur modifié !','success');
+  renderUsersTable();
+}
+
+// ═══════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════
+function renderDashboard(){
+  const files=DB.get('files')||[];
+  const links=DB.get('links')||[];
+  const users=DB.get('users')||[];
+  const tutos=DB.get('tutos')||[];
+  document.getElementById('dashStats').innerHTML=`
+    <div class="stat-card"><div class="icon">👥</div><div class="num">${users.length}</div><div class="lbl">Utilisateurs</div></div>
+    <div class="stat-card"><div class="icon">📁</div><div class="num">${files.length}</div><div class="lbl">Fichiers</div></div>
+    <div class="stat-card"><div class="icon">🔗</div><div class="num">${links.length}</div><div class="lbl">Liens</div></div>
+    <div class="stat-card"><div class="icon">🎓</div><div class="num">${tutos.length}</div><div class="lbl">Tutoriels</div></div>
+  `;
+  document.getElementById('dashRecent').innerHTML=`
+    <div class="card"><div class="card-icon orange">📁</div><h3>Gestion des fichiers</h3><p>Ajoutez et gérez les fichiers SolidWorks disponibles en téléchargement.</p><div class="card-meta"><button class="btn btn-orange btn-sm" onclick="showPage('gfichiers')">Gérer →</button></div></div>
+    <div class="card"><div class="card-icon blue">👥</div><h3>Utilisateurs</h3><p>Gérez les comptes, rôles et permissions des membres de la plateforme.</p><div class="card-meta"><button class="btn btn-orange btn-sm" onclick="showPage('users')">Gérer →</button></div></div>
+    <div class="card"><div class="card-icon green">🔗</div><h3>Liens & Tutoriels</h3><p>Ajoutez des liens utiles et des tutoriels pour la communauté.</p><div class="card-meta"><button class="btn btn-orange btn-sm" onclick="showPage('gliens')">Gérer →</button></div></div>
+  `;
+}
+
+// ═══════════════════════════════════════════
+// MON COMPTE
+// ═══════════════════════════════════════════
+function fillAccount(){
+  document.getElementById('accFirst').value=currentUser.first;
+  document.getElementById('accLast').value=currentUser.last;
+  document.getElementById('accEmail').value=currentUser.email;
+}
+
+function saveAccount(){
+  const first=document.getElementById('accFirst').value.trim();
+  const last =document.getElementById('accLast').value.trim();
+  const pwd  =document.getElementById('accPwd').value;
+  const pwd2 =document.getElementById('accPwd2').value;
+  const ok   =document.getElementById('accountSuccess');
+  ok.style.display='none';
+  if(!first||!last){ toast('Prénom et nom requis.','error'); return; }
+  if(pwd && pwd.length<6){ toast('Mot de passe trop court.','error'); return; }
+  if(pwd && pwd!==pwd2){ toast('Les mots de passe ne correspondent pas.','error'); return; }
+  const users=DB.get('users')||[];
+  const i=users.findIndex(x=>x.id===currentUser.id);
+  users[i]={...users[i],first,last};
+  if(pwd) users[i].pwd=pwd;
+  DB.set('users',users);
+  currentUser={...users[i]};
+  localStorage.setItem('swa_session', currentUser.id);
+  document.getElementById('navName').textContent=first+' '+last;
+  document.getElementById('navAvatar').textContent=first[0].toUpperCase();
+  document.getElementById('accPwd').value='';
+  document.getElementById('accPwd2').value='';
+  ok.textContent='Modifications enregistrées !'; ok.style.display='block';
+  setTimeout(()=>ok.style.display='none',3000);
+}
+
+// ═══════════════════════════════════════════
+// DELETE CONFIRM
+// ═══════════════════════════════════════════
+function confirmDelete(type, id, name){
+  document.getElementById('confirmMsg').textContent=`Voulez-vous vraiment supprimer "${name}" ? Cette action est irréversible.`;
+  document.getElementById('confirmBtn').onclick=()=>deleteItem(type,id);
+  openModal('modalConfirm');
+}
+
+function deleteItem(type,id){
+  if(type==='file'){
+    const files=DB.get('files').filter(x=>x.id!==id); DB.set('files',files);
+    toast('Fichier supprimé.','info');
+    renderFilesTable(); renderFiles();
+  } else if(type==='link'){
+    const links=DB.get('links').filter(x=>x.id!==id); DB.set('links',links);
+    toast('Lien supprimé.','info');
+    renderLinksTable(); renderLinks();
+  } else if(type==='tuto'){
+    const tutos=DB.get('tutos').filter(x=>x.id!==id); DB.set('tutos',tutos);
+    toast('Tutoriel supprimé.','info');
+    renderTutosTable(); renderTutos();
+  } else if(type==='user'){
+    const users=DB.get('users').filter(x=>x.id!==id); DB.set('users',users);
+    toast('Utilisateur supprimé.','info');
+    renderUsersTable();
+  }
+  updateStats();
+  closeModal('modalConfirm');
+}
+
+// ═══════════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════════
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o=>{
+  o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); });
+});
+
+// ═══════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════
+function toast(msg, type='info'){
+  const icons={success:'✅',error:'❌',info:'ℹ️'};
+  const div=document.createElement('div');
+  div.className=`toast-item ${type}`;
+  div.innerHTML=`<span>${icons[type]||'ℹ️'}</span> ${msg}`;
+  document.getElementById('toast').appendChild(div);
+  setTimeout(()=>div.remove(),3500);
+}
+
+// ═══════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+
+// ═══════════════════════════════════════════
+// INIT ASYNCHRONE — charge les données depuis Firestore
+// ═══════════════════════════════════════════
+async function init(){
+  try {
+    await loadAllData();
+  } catch(e){
+    console.error('Erreur Firestore:', e);
+    // Afficher un message d'erreur si Firebase n'est pas configuré
+    document.getElementById('loadingOverlay').innerHTML=`
+      <div style="text-align:center;padding:40px;max-width:480px;">
+        <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
+        <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:24px;color:#fff;margin-bottom:12px;">Firebase non configuré</h2>
+        <p style="color:#9a9caa;font-size:14px;line-height:1.6;margin-bottom:20px;">
+          Ouvrez le fichier <code style="color:#ff5c1a;">index.html</code> et remplacez les valeurs <code style="color:#ff5c1a;">firebaseConfig</code> par celles de votre projet Firebase.<br><br>
+          Consultez le guide de configuration inclus.
+        </p>
+        <a href="https://console.firebase.google.com/" target="_blank" style="background:#ff5c1a;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">→ Créer un projet Firebase</a>
+      </div>
+    `;
+    return;
+  }
+  initData();
+  document.getElementById('loadingOverlay').style.display='none';
+  if(!tryAutoLogin()){
+    document.getElementById('authScreen').style.display='flex';
+  }
+}
+
+document.getElementById('loginPwd').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+document.getElementById('loginEmail').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+
+init();
+</script>
+</body>
+</html>
